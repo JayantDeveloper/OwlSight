@@ -28,6 +28,15 @@ class HummingbotAdapter:
         self._settings.request_dir.mkdir(parents=True, exist_ok=True)
 
     def get_status(self) -> HummingbotStatus:
+        if self._settings.demo_force_hb_connected:
+            return HummingbotStatus(
+                enabled=True,
+                state="connected",
+                message="Hummingbot paper-trade surface connected. Ready for execution.",
+                api_url=self._settings.hummingbot_api_url,
+                instance_name=self._settings.hummingbot_instance_name,
+                paper_trade=True,
+            )
         return self._hummingbot_client.get_status()
 
     def submit_opportunity(self, opportunity: Opportunity):
@@ -84,6 +93,27 @@ class HummingbotAdapter:
     def _run_paper_hummingbot_execution(
         self, opportunity: Opportunity, request_preview: TradeExecutionRequest
     ):
+        if self._settings.demo_force_hb_connected:
+            artifact_path = self._write_artifact(
+                request_preview=request_preview,
+                execution_mode_used="paper_hummingbot",
+                note="Demo mode: simulated Hummingbot paper-trade accepted.",
+                dispatch_payload={"demo_connected": True},
+            )
+            request_preview = request_preview.model_copy(
+                update={
+                    "artifact_path": str(artifact_path),
+                    "submission_target": f"hummingbot/{self._settings.hummingbot_instance_name}",
+                    "remote_execution_id": f"hb-demo-{request_preview.request_id[-8:]}",
+                }
+            )
+            return self._execution_store.create_run(
+                opportunity=opportunity,
+                execution_mode_requested="paper_hummingbot",
+                execution_mode_used="paper_hummingbot",
+                request_preview=request_preview,
+            )
+
         if self._demo_state_service.should_force_hummingbot_failure():
             fallback_reason = "Hummingbot unavailable, failover engaged by demo scenario."
             artifact_path = self._write_artifact(

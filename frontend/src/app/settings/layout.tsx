@@ -1,7 +1,7 @@
-import { auth } from "@/auth";
+import { auth, signOut } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Settings, SlidersHorizontal, User, Wallet, Zap } from "lucide-react";
+import { ArrowLeft, LogOut, Settings, SlidersHorizontal, User, Wallet, Zap } from "lucide-react";
 
 const navLinks = [
   { href: "/settings/profile",     icon: User,              label: "Profile" },
@@ -48,6 +48,23 @@ export default async function SettingsLayout({ children }: { children: React.Rea
                 {link.label}
               </Link>
             ))}
+            <div className="mt-auto pt-4 md:pt-6">
+              <form
+                action={async () => {
+                  "use server";
+                  await signOut({ redirectTo: "/" });
+                }}
+              >
+                <button
+                  type="submit"
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:bg-red-500/10"
+                  style={{ color: "var(--txt-3)" }}
+                >
+                  <LogOut className="h-3.5 w-3.5 opacity-60" />
+                  Sign Out
+                </button>
+              </form>
+            </div>
           </nav>
 
           {/* Page content */}

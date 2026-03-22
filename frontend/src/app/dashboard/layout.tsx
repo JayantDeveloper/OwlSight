@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Clock, BookMarked } from "lucide-react";
+import { LayoutDashboard, Clock, BookMarked, Settings } from "lucide-react";
 
 const navLinks = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
@@ -38,6 +38,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </Link>
             );
           })}
+          <div className="ml-auto">
+            <Link
+              href="/settings/wallets"
+              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-white/[0.06]"
+              style={{ color: "var(--txt-3)" }}
+            >
+              <Settings className="h-3.5 w-3.5" />
+              Settings
+            </Link>
+          </div>
         </div>
       </div>
       <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">{children}</div>

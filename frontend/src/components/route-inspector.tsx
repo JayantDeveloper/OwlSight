@@ -24,8 +24,6 @@ import type {
   RequestedExecutionMode,
 } from "@/lib/types";
 
-import { ExecutionCta } from "./execution-cta";
-
 interface RouteInspectorProps {
   opportunity: Opportunity | null;
   hummingbotStatus: HummingbotStatus | null;
@@ -100,9 +98,6 @@ export function RouteInspector({
   const isPaperTradeReady =
     executionModeConfigured === "paper_hummingbot" &&
     hummingbotStatus?.state === "connected";
-  const executionLabel = isPaperTradeReady
-    ? "Execute Approved Trade"
-    : "Run Simulated Trade";
   const executionBadge = opportunity.execute
     ? isPaperTradeReady
       ? "Paper Trade Ready"
@@ -365,14 +360,6 @@ export function RouteInspector({
         </div>
       )}
 
-      <div className="mt-5">
-        <ExecutionCta
-          disabled={isExecuting}
-          isExecuting={isExecuting}
-          label={executionLabel}
-          onExecute={onExecute}
-        />
-      </div>
     </div>
   );
 }

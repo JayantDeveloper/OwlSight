@@ -56,6 +56,7 @@ class Settings:
     hummingbot_api_url: str
     hummingbot_instance_name: str
     hummingbot_paper_trade: bool
+    demo_force_hb_connected: bool
     cache_ttl_seconds: int
     frontend_origin: str
     backend_cors_origins: List[str]
@@ -101,6 +102,10 @@ def get_settings() -> Settings:
         hummingbot_paper_trade=_parse_bool(
             os.getenv("HUMMINGBOT_PAPER_TRADE"),
             True,
+        ),
+        demo_force_hb_connected=_parse_bool(
+            os.getenv("DEMO_FORCE_HB_CONNECTED"),
+            False,
         ),
         cache_ttl_seconds=int(os.getenv("CACHE_TTL_SECONDS", "20")),
         frontend_origin=frontend_origin,

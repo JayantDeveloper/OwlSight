@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: owlsight-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: BIRDEYE_API_KEY
+        sync: false
+      - key: COINGECKO_API_KEY
+        sync: false
+      - key: COINGECKO_API_TIER
+        value: pro
+      - key: COINGECKO_BASE_URL
+        value: https://pro-api.coingecko.com/api/v3
+      - key: MARKET_DATA_PROVIDER
+        value: coingecko
+      - key: EXECUTION_MODE
+        value: paper_hummingbot
+      - key: HUMMINGBOT_ENABLED
+        value: "true"
+      - key: HUMMINGBOT_PAPER_TRADE
+        value: "true"
+      - key: HUMMINGBOT_INSTANCE_NAME
+        value: paper-demo
+      - key: HUMMINGBOT_API_URL
+        value: http://localhost:15888
+      - key: DEMO_FORCE_HB_CONNECTED
+        value: "true"
+      - key: CACHE_TTL_SECONDS
+        value: "20"
+      - key: FRONTEND_ORIGIN
+        sync: false
