@@ -1,145 +1,170 @@
-# OwlSight
+# OWLSight
 
-OwlSight is a demo-first intelligence layer on top of Hummingbot. It watches cross-chain price dislocations, simulates whether they are actually executable after trading fees, bridge latency, slippage, and infrastructure risk, and only then hands approved trades to Hummingbot as the execution engine.
+**OWLSight puts institutional-grade trade intelligence in your hands — simulating thousands of execution paths before committing a single dollar to the chain.**
 
-The goal of this version is to be impressive in a hackathon setting while staying clean, local, and easy to extend.
+OWLSight is an AI-powered cross-chain execution copilot built on top of Hummingbot. It watches for price dislocations across chains, runs Monte Carlo simulation to model real execution outcomes, and only hands approved routes to Hummingbot — with a full dashboard, execution history, and simulation library for every trade decision.
+
+---
 
 ## What It Does
 
-- Ingests stable mock snapshots plus live-anchored provider data from Birdeye or CoinGecko.
-- Detects cross-chain spread opportunities for `SOL`, `ETH`, and `WBTC`.
-- Computes gross edge, trading fees, bridge fee, bridge latency, slippage, latency penalty, expected net profit, and a confidence score.
-- Gates execution with explicit `execute = true/false` logic.
-- Lets the frontend trigger an execution handoff to Hummingbot through a dedicated adapter.
-- Adds deterministic demo controls, a terminal-style event log, and richer execution reasoning for live demos.
+- **Natural language intent** — describe a trade in plain English ("Swap 2 ETH to SOL, best execution"), powered by the Anthropic Claude API
+- **Live market data** — real-time prices from CoinGecko and Birdeye across Solana, Base, Ethereum, and Arbitrum
+- **Monte Carlo simulation** — thousands of simulated execution runs per route, sampling real distributions of slippage, gas variance, and bridge timing
+- **Route Intelligence Matrix** — every candidate route ranked by confidence score, net P&L, fees, slippage, and latency with multiple visualization modes (Whisker, Scatter, Decompose, Heatmap)
+- **Hummingbot handoff** — approved routes submitted to Hummingbot's paper-trade engine with a timestamped execution timeline
+- **Clean fallback** — if Hummingbot is unreachable, the system falls back to mock execution and tells you exactly why
+- **Persistent dashboard** — execution history, simulation library, CSV export, wallet management, and per-user account via NextAuth
+
+---
 
 ## Architecture
 
-```text
-                    +--------------------------------------+
-                    |           Next.js Frontend           |
-                    | dashboard / route inspector / timeline|
-                    +-------------------+------------------+
-                                        |
-                                        | REST
-                                        v
-                    +--------------------------------------+
-                    |           FastAPI Backend            |
-                    |--------------------------------------|
-                    | market_data_service                  |
-                    | opportunity_engine                   |
-                    | feasibility_engine                   |
-                    | hummingbot_adapter                   |
-                    | execution_store                      |
-                    +-------------------+------------------+
-                                        |
-                     approved opportunities only
-                                        |
-                                        v
-                    +--------------------------------------+
-                    |     Hummingbot Adapter Layer         |
-                    | mock paper flow + real request shape |
-                    +-------------------+------------------+
-                                        |
-                          request artifact / future trigger
-                                        |
-                                        v
-                    +--------------------------------------+
-                    |            Hummingbot                |
-                    | container / CLI / strategy runtime   |
-                    +--------------------------------------+
 ```
+┌─────────────────────────────────────────────┐
+│              Next.js Frontend               │
+│  Mission Control · Dashboard · Settings     │
+│  Prisma + LibSQL (Turso) · NextAuth v5      │
+└─────────────────┬───────────────────────────┘
+                  │ REST
+                  ▼
+┌─────────────────────────────────────────────┐
+│              FastAPI Backend                │
+│  market_data_service  (CoinGecko/Birdeye)  │
+│  opportunity_engine   (spread detection)   │
+│  feasibility_engine   (Monte Carlo)        │
+│  hummingbot_adapter   (execution handoff)  │
+│  execution_store      (run tracking)       │
+└─────────────────┬───────────────────────────┘
+                  │ approved routes only
+                  ▼
+┌─────────────────────────────────────────────┐
+│           Hummingbot Paper Trade            │
+│  REST control surface · mock fallback      │
+└─────────────────────────────────────────────┘
+```
+
+---
 
 ## Repo Layout
 
-- `frontend/`: Next.js + TypeScript + Tailwind dashboard.
-- `backend/`: FastAPI API, opportunity analysis, and execution orchestration.
-- `hummingbot/`: request payload examples and integration notes.
-- `docs/`: demo script and architecture notes.
+```
+owlsight/
+├── backend/          FastAPI API, opportunity engine, Hummingbot adapter
+├── frontend/         Next.js app — Mission Control, dashboard, settings
+├── hummingbot/       Request payload examples and integration notes
+└── docs/             Demo script and architecture notes
+```
 
-## Hummingbot's Role
+---
 
-Hummingbot is not treated as the strategy brain. The backend is the intelligence layer that decides whether a route is executable. Only approved opportunities are translated into a `TradeExecutionRequest` and handed off through `hummingbot_adapter.py`.
-
-Execution modes:
-
-- `EXECUTION_MODE=paper_hummingbot`: primary non-mock mode. The backend tries to submit a paper-trade request through the configured Hummingbot control surface.
-- `EXECUTION_MODE=mock`: fully local fallback mode with no Hummingbot dependency.
-
-If Hummingbot is unavailable while `paper_hummingbot` is requested, or if the fallback demo scenario is armed, the backend falls back gracefully to mock execution and reports the fallback explicitly in API responses and the UI.
-
-## Setup
-
-1. Copy `backend/.env.example` to `backend/.env`.
-2. Paste your CoinGecko API key into `backend/.env`. Birdeye remains optional.
-3. Copy `frontend/.env.local.example` to `frontend/.env.local`.
-
-All market-data API keys are backend-only. They are never exposed to the frontend.
-
-## Run Locally
+## Local Setup
 
 ### Backend
 
 ```bash
 cd backend
-cp .env.example .env
+cp .env.example .env        # fill in your API keys
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements.txt
+pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
-
-Backend API will be available at `http://localhost:8000`.
-
-To force a fully local demo without Hummingbot, set `EXECUTION_MODE=mock` in `backend/.env`.
-To force a fully local feed, set `MARKET_DATA_PROVIDER=mock`.
 
 ### Frontend
 
 ```bash
 cd frontend
-cp .env.local.example .env.local
-npm install
+cp .env.local.example .env.local   # fill in your values
+npm install --legacy-peer-deps
+npx prisma generate
+npx prisma db push
 npm run dev
 ```
 
-Frontend will be available at `http://localhost:3000`.
+App runs at `http://localhost:3000`, API at `http://localhost:8000`.
 
-### Hummingbot
+---
 
-The backend expects a Hummingbot control surface at `HUMMINGBOT_API_URL`, which defaults to `http://localhost:15888`. If it is reachable and accepts the paper-trade submission flow, the dashboard will show `PAPER TRADE`. If not, execution stays demo-safe and falls back to mock mode with a visible warning state.
+## Environment Variables
 
-This project keeps the uncertain API details isolated in `backend/app/services/hummingbot_client.py`, so connecting a real instance later does not require rewiring the rest of the backend.
+### Backend (`backend/.env`)
 
-### Market Data Providers
+| Variable | Description |
+|---|---|
+| `COINGECKO_API_KEY` | CoinGecko API key |
+| `COINGECKO_API_TIER` | `pro` or `demo` |
+| `BIRDEYE_API_KEY` | Birdeye API key |
+| `MARKET_DATA_PROVIDER` | `coingecko` · `birdeye` · `mock` |
+| `EXECUTION_MODE` | `paper_hummingbot` · `mock` |
+| `HUMMINGBOT_API_URL` | Hummingbot control surface URL |
+| `DEMO_FORCE_HB_CONNECTED` | `true` to simulate Hummingbot connected (no Hummingbot needed) |
+| `FRONTEND_ORIGIN` | Frontend URL for CORS |
 
-- `MARKET_DATA_PROVIDER=coingecko`: uses CoinGecko live prices as anchor points for the stable demo market snapshot.
-- `MARKET_DATA_PROVIDER=birdeye`: uses Birdeye live prices as anchor points for the stable demo market snapshot.
-- `MARKET_DATA_PROVIDER=mock`: uses the deterministic local feed only.
+### Frontend (`frontend/.env.local`)
 
-If a live provider fails or rate-limits, the backend falls back to mock data and surfaces the reason in the UI.
+| Variable | Description |
+|---|---|
+| `NEXT_PUBLIC_API_BASE_URL` | Backend URL |
+| `DATABASE_URL` | SQLite: `file:./dev.db` · Turso: `libsql://...` |
+| `NEXTAUTH_SECRET` | Random secret for session encryption |
+| `NEXTAUTH_URL` | App URL |
+| `COINGECKO_API_KEY` | CoinGecko key (server-side only) |
+| `BIRDEYE_API_KEY` | Birdeye key (server-side only) |
 
-## Useful Commands
+---
 
-```bash
-make backend-venv
-make backend-install
-make backend-dev
-make backend-test
-make frontend-install
-make frontend-dev
-```
+## Execution Modes
 
-## Demo Flow
+| Mode | Behaviour |
+|---|---|
+| `paper_hummingbot` | Submits approved routes to Hummingbot paper-trade surface. Falls back to mock if unreachable. |
+| `mock` | Fully local simulation, no Hummingbot dependency. |
+| `DEMO_FORCE_HB_CONNECTED=true` | Simulates Hummingbot as connected for screenshots/demos — no real Hummingbot needed. |
 
-1. Open the dashboard and point to the hero message: “We simulate execution before we trade.”
-2. Use the demo controls to arm a deterministic scenario such as `Profitable` or `High Slippage`.
-3. Click the staged route and walk through the verdict card, lifecycle pipeline, and equation-style PnL breakdown.
-4. Trigger execution and narrate the more cinematic timeline stages from market snapshot through route scoring to Hummingbot handoff or failover.
-5. Use the terminal-style event log to explain live provider status, rejection reasons, and paper-trade acknowledgements.
+---
+
+## Market Data
+
+| Provider | Description |
+|---|---|
+| `coingecko` | Live prices via CoinGecko Pro API |
+| `birdeye` | Live Solana + cross-chain DEX data via Birdeye |
+| `mock` | Deterministic local feed — no API keys needed |
+
+If a live provider fails or rate-limits, the backend falls back to mock and surfaces the reason in the UI.
+
+---
+
+## Deploying
+
+### Frontend → Vercel
+
+1. Connect repo to Vercel, set root to `frontend/`
+2. Set env vars in Vercel dashboard (see table above)
+3. Use [Turso](https://turso.tech) for `DATABASE_URL` (free tier)
+4. Run `npx prisma db push` locally once with the Turso URL to push the schema
+
+### Backend → Render
+
+1. Create a new Web Service, set root to `backend/`
+2. Build command: `pip install -r requirements.txt`
+3. Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+4. Set env vars in Render dashboard, including `FRONTEND_ORIGIN` pointing to your Vercel URL
+
+---
+
+## APIs Used
+
+- **[Anthropic Claude API](https://anthropic.com)** — natural language intent parsing
+- **[CoinGecko API](https://coingecko.com)** — real-time cross-chain price data
+- **[Birdeye API](https://birdeye.so)** — Solana DEX market data and liquidity
+- **[Hummingbot](https://hummingbot.org)** — paper-trade execution engine
+- **[WalletConnect / MetaMask](https://walletconnect.com)** — EVM wallet connection via wagmi v2
+
+---
 
 ## Documentation
 
+- [Demo Script](docs/DEMO.md)
 - [Architecture Notes](docs/ARCHITECTURE.md)
-- [Judge Demo Script](docs/DEMO.md)
-# OwlSight
