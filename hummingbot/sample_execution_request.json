@@ -1,0 +1,27 @@
+{
+  "request_id": "hbreq-demo001",
+  "opportunity_id": "eth-base-aerodrome-ethereum-uniswap-v3",
+  "asset_symbol": "ETH",
+  "symbol": "ETH-USDT",
+  "side": "buy_then_bridge_then_sell",
+  "source_chain": "Base",
+  "source_venue": "Aerodrome",
+  "destination_chain": "Ethereum",
+  "destination_venue": "Uniswap V3",
+  "bridge_name": "Across",
+  "bridge_pair": "Base->Ethereum",
+  "notional_usd": 24000,
+  "asset_amount": 7.086118,
+  "execution_mode_requested": "paper_hummingbot",
+  "paper_trade": true,
+  "paper_trade_connector": "binance_paper_trade",
+  "submission_target": "hummingbot:paper-demo",
+  "external_execution_id": "paper-demo",
+  "artifact_path": "hummingbot/requests/hbreq-demo001.json",
+  "approval_stage": "approved",
+  "guardrails": {
+    "max_slippage_bps": 16,
+    "min_net_profit_usd": 75,
+    "min_confidence_score": 0.68
+  }
+}

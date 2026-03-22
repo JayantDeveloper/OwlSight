@@ -1,0 +1,163 @@
+{
+  "assets": {
+    "SOL": {
+      "default_notional_usd": 18000,
+      "max_slippage_bps": 28
+    },
+    "ETH": {
+      "default_notional_usd": 24000,
+      "max_slippage_bps": 24
+    },
+    "WBTC": {
+      "default_notional_usd": 30000,
+      "max_slippage_bps": 18
+    }
+  },
+  "quotes": [
+    {
+      "quote_id": "solana-jupiter-sol",
+      "asset_symbol": "SOL",
+      "chain": "Solana",
+      "venue": "Jupiter",
+      "pair": "SOL/USDC",
+      "price_usd": 184.12,
+      "fee_bps": 8,
+      "available_liquidity_usd": 1250000,
+      "depth_score": 0.93,
+      "max_jitter_bps": 10
+    },
+    {
+      "quote_id": "base-aerodrome-sol",
+      "asset_symbol": "SOL",
+      "chain": "Base",
+      "venue": "Aerodrome",
+      "pair": "SOL/USDC",
+      "price_usd": 186.35,
+      "fee_bps": 12,
+      "available_liquidity_usd": 860000,
+      "depth_score": 0.88,
+      "max_jitter_bps": 12
+    },
+    {
+      "quote_id": "ethereum-uniswap-sol",
+      "asset_symbol": "SOL",
+      "chain": "Ethereum",
+      "venue": "Uniswap V3",
+      "pair": "SOL/USDC",
+      "price_usd": 187.28,
+      "fee_bps": 15,
+      "available_liquidity_usd": 720000,
+      "depth_score": 0.82,
+      "max_jitter_bps": 14
+    },
+    {
+      "quote_id": "arbitrum-camelot-sol",
+      "asset_symbol": "SOL",
+      "chain": "Arbitrum",
+      "venue": "Camelot",
+      "pair": "SOL/USDC",
+      "price_usd": 185.54,
+      "fee_bps": 11,
+      "available_liquidity_usd": 690000,
+      "depth_score": 0.84,
+      "max_jitter_bps": 11
+    },
+    {
+      "quote_id": "solana-jupiter-eth",
+      "asset_symbol": "ETH",
+      "chain": "Solana",
+      "venue": "Jupiter",
+      "pair": "ETH/USDC",
+      "price_usd": 3381.0,
+      "fee_bps": 10,
+      "available_liquidity_usd": 980000,
+      "depth_score": 0.9,
+      "max_jitter_bps": 8
+    },
+    {
+      "quote_id": "base-aerodrome-eth",
+      "asset_symbol": "ETH",
+      "chain": "Base",
+      "venue": "Aerodrome",
+      "pair": "ETH/USDC",
+      "price_usd": 3387.0,
+      "fee_bps": 12,
+      "available_liquidity_usd": 1040000,
+      "depth_score": 0.89,
+      "max_jitter_bps": 8
+    },
+    {
+      "quote_id": "ethereum-uniswap-eth",
+      "asset_symbol": "ETH",
+      "chain": "Ethereum",
+      "venue": "Uniswap V3",
+      "pair": "ETH/USDC",
+      "price_usd": 3424.0,
+      "fee_bps": 16,
+      "available_liquidity_usd": 1120000,
+      "depth_score": 0.94,
+      "max_jitter_bps": 7
+    },
+    {
+      "quote_id": "arbitrum-camelot-eth",
+      "asset_symbol": "ETH",
+      "chain": "Arbitrum",
+      "venue": "Camelot",
+      "pair": "ETH/USDC",
+      "price_usd": 3398.0,
+      "fee_bps": 11,
+      "available_liquidity_usd": 840000,
+      "depth_score": 0.86,
+      "max_jitter_bps": 8
+    },
+    {
+      "quote_id": "solana-jupiter-wbtc",
+      "asset_symbol": "WBTC",
+      "chain": "Solana",
+      "venue": "Jupiter",
+      "pair": "WBTC/USDC",
+      "price_usd": 61920.0,
+      "fee_bps": 10,
+      "available_liquidity_usd": 510000,
+      "depth_score": 0.85,
+      "max_jitter_bps": 9
+    },
+    {
+      "quote_id": "base-aerodrome-wbtc",
+      "asset_symbol": "WBTC",
+      "chain": "Base",
+      "venue": "Aerodrome",
+      "pair": "WBTC/USDC",
+      "price_usd": 62130.0,
+      "fee_bps": 15,
+      "available_liquidity_usd": 420000,
+      "depth_score": 0.79,
+      "max_jitter_bps": 10
+    },
+    {
+      "quote_id": "ethereum-uniswap-wbtc",
+      "asset_symbol": "WBTC",
+      "chain": "Ethereum",
+      "venue": "Uniswap V3",
+      "pair": "WBTC/USDC",
+      "price_usd": 62340.0,
+      "fee_bps": 18,
+      "available_liquidity_usd": 710000,
+      "depth_score": 0.9,
+      "max_jitter_bps": 7
+    },
+    {
+      "quote_id": "arbitrum-camelot-wbtc",
+      "asset_symbol": "WBTC",
+      "chain": "Arbitrum",
+      "venue": "Camelot",
+      "pair": "WBTC/USDC",
+      "price_usd": 62040.0,
+      "fee_bps": 14,
+      "available_liquidity_usd": 360000,
+      "depth_score": 0.74,
+      "max_jitter_bps": 12
+    }
+  ]
+}
+
