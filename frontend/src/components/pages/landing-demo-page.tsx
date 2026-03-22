@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { FlowDemo } from "@/components/pages/flow-demo";
 import {
   ArrowRight,
   BarChart3,
@@ -131,6 +132,9 @@ export function LandingDemoPage() {
             ))}
           </div>
         </section>
+
+        {/* ── Animated flow demo ── */}
+        <FlowDemo />
 
         {/* ── How OwlSight works — three-step ── */}
         <section className="mb-20">

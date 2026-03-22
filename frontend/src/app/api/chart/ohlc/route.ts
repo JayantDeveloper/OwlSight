@@ -27,7 +27,11 @@ export interface CoinChartData {
 // ── Config ────────────────────────────────────────────────────────────────────
 
 const CG_KEY  = process.env.COINGECKO_API_KEY ?? "";
-const CG_BASE = "https://api.coingecko.com/api/v3";
+const CG_TIER = (process.env.COINGECKO_API_TIER ?? "demo").toLowerCase();
+const CG_BASE = CG_TIER === "pro"
+  ? "https://pro-api.coingecko.com/api/v3"
+  : "https://api.coingecko.com/api/v3";
+const CG_AUTH_HEADER = CG_TIER === "pro" ? "x-cg-pro-api-key" : "x-cg-demo-api-key";
 const BE_KEY  = process.env.BIRDEYE_API_KEY ?? "";
 const BE_BASE = "https://public-api.birdeye.so";
 
@@ -86,7 +90,7 @@ async function fetchCoinGecko(symbol: string, days: number): Promise<CoinChartDa
   }
 
   const headers: Record<string, string> = { accept: "application/json" };
-  if (CG_KEY) headers["x-cg-demo-api-key"] = CG_KEY;
+  if (CG_KEY) headers[CG_AUTH_HEADER] = CG_KEY;
 
   // ── 1. Daily close prices + volume (market_chart) ──────────────────────────
   let points: ChartPoint[] = [];
@@ -98,6 +102,9 @@ async function fetchCoinGecko(symbol: string, days: number): Promise<CoinChartDa
       { headers, cache: "no-store" },
     );
 
+    if (chartRes.status === 401) {
+      return { symbol, source: "coingecko", hasOHLC: false, hasVolume: false, points: [], error: `CoinGecko 401: API key invalid or wrong tier (configured: ${CG_TIER})` };
+    }
     if (chartRes.status === 429) {
       return { symbol, source: "coingecko", hasOHLC: false, hasVolume: false, points: [], error: "CoinGecko rate limit — try again shortly" };
     }

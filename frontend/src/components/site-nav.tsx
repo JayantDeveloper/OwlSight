@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
+import { ThemeToggle } from "./theme-toggle";
+
 const navItems = [
   { href: "/", label: "Home" },
   { href: "/how-it-works", label: "How It Works" },
@@ -48,7 +50,7 @@ export function SiteNav({ pathname }: { pathname: string }) {
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#080B11]/90 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-white/[0.06] backdrop-blur-xl" style={{ background: "var(--nav-bg)" }}>
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-4 py-3 sm:px-6 lg:px-8">
 
           {/* Logo */}
@@ -64,8 +66,8 @@ export function SiteNav({ pathname }: { pathname: string }) {
               />
             </div>
             <div>
-              <div className="text-sm font-semibold text-white">OwlSight</div>
-              <div className="text-[10px] tracking-wide text-white/35">Execution Intelligence</div>
+              <div className="text-sm font-semibold" style={{ color: "var(--txt-1)" }}>OwlSight</div>
+              <div className="text-[10px] tracking-wide" style={{ color: "var(--txt-3)" }}>Execution Intelligence</div>
             </div>
           </Link>
 
@@ -79,9 +81,10 @@ export function SiteNav({ pathname }: { pathname: string }) {
                   href={item.href}
                   className={`inline-flex rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-200 ${
                     active
-                      ? "bg-gradient-to-r from-solviolet to-[#7B2FFF] text-white shadow-glow-violet-sm"
-                      : "text-white/75 hover:bg-white/[0.09] hover:text-white"
+                      ? "bg-solviolet text-white shadow-glow-violet-sm"
+                      : "hover:bg-white/[0.09]"
                   }`}
+                  style={active ? undefined : { color: "var(--txt-2)" }}
                 >
                   {item.label}
                 </Link>
@@ -89,24 +92,34 @@ export function SiteNav({ pathname }: { pathname: string }) {
             })}
           </nav>
 
-          {/* CTA */}
-          <button
-            type="button"
-            onClick={handleLaunchApp}
-            className="btn-gradient hidden rounded-full px-5 py-2 text-sm font-semibold text-white sm:inline-flex"
-          >
-            Launch App
-          </button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Link
+              href="/auth/signin"
+              className="hidden rounded-full px-4 py-1.5 text-sm font-medium transition-colors hover:bg-white/[0.06] sm:inline-flex"
+              style={{ color: "var(--txt-2)" }}
+            >
+              Sign in
+            </Link>
+            {/* CTA */}
+            <button
+              type="button"
+              onClick={handleLaunchApp}
+              className="btn-gradient hidden rounded-full px-5 py-2 text-sm font-semibold text-white sm:inline-flex"
+            >
+              Launch App
+            </button>
+          </div>
         </div>
       </header>
 
       {/* ── Launch loading overlay ── */}
       {showLoader && (
         <div
-          className={`fixed inset-0 z-50 flex items-center justify-center bg-[#080B11]/95 backdrop-blur-xl transition-opacity duration-500 ${
+          className={`fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xl transition-opacity duration-500 ${
             loaderFading ? "opacity-0" : "opacity-100"
           }`}
-          style={{ animation: loaderFading ? undefined : "fadeIn 0.3s ease-out" }}
+          style={{ background: "var(--overlay-bg)", animation: loaderFading ? undefined : "fadeIn 0.3s ease-out" }}
         >
           <div className="flex flex-col items-center gap-8">
             {/* Logo with scanner rings */}
@@ -165,10 +178,10 @@ export function SiteNav({ pathname }: { pathname: string }) {
 
             {/* Text */}
             <div className="text-center">
-              <p className="font-mono text-sm text-white/80" style={{ animation: "fadeIn 0.6s ease-out 0.3s both" }}>
+              <p className="font-mono text-sm text-white/80" style={{ animation: "fadeIn 0.6s ease-out 0.3s both", color: "var(--txt-1)" }}>
                 Initializing Mission Control…
               </p>
-              <p className="mt-2 font-mono text-xs text-white/30" style={{ animation: "fadeIn 0.6s ease-out 0.8s both" }}>
+              <p className="mt-2 font-mono text-xs" style={{ animation: "fadeIn 0.6s ease-out 0.8s both", color: "var(--txt-3)" }}>
                 Connecting to execution layer
               </p>
             </div>

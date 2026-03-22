@@ -1,0 +1,68 @@
+OwlSight - Sources and Documentation References
+===============================================
+
+This file lists external documentation and reference sites used while building
+and iterating on this project.
+
+Core Market Data / Trading Sources
+----------------------------------
+CoinGecko API Documentation:
+https://docs.coingecko.com/
+
+CoinGecko API (Simple Price endpoint reference):
+https://docs.coingecko.com/reference/simple-price
+
+Birdeye API Documentation:
+https://docs.birdeye.so/
+
+Birdeye Public API Reference:
+https://docs.birdeye.so/reference/get-defi-price
+
+Finviz:
+https://finviz.com/
+
+Execution / Bot Infrastructure
+------------------------------
+Hummingbot Official Documentation:
+https://hummingbot.org/docs/
+
+Hummingbot GitHub Repository:
+https://github.com/hummingbot/hummingbot
+
+Frameworks and Libraries Used
+-----------------------------
+Next.js Documentation:
+https://nextjs.org/docs
+
+React Documentation:
+https://react.dev/
+
+Tailwind CSS Documentation:
+https://tailwindcss.com/docs
+
+FastAPI Documentation:
+https://fastapi.tiangolo.com/
+
+Pydantic Documentation:
+https://docs.pydantic.dev/
+
+HTTPX Documentation:
+https://www.python-httpx.org/
+
+Uvicorn Documentation:
+https://www.uvicorn.org/
+
+TypeScript Documentation:
+https://www.typescriptlang.org/docs/
+
+OpenAI / AI Assistant References
+--------------------------------
+ChatGPT:
+https://chat.openai.com/
+
+OpenAI Platform Documentation:
+https://platform.openai.com/docs/
+
+OpenAI API Reference:
+https://platform.openai.com/docs/api-reference
+

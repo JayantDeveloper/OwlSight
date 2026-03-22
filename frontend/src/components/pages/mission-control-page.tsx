@@ -5,26 +5,30 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
+  Bookmark,
+  BookmarkCheck,
+  Command,
   Filter,
-  Flame,
   Loader2,
   Radar,
-  TerminalSquare,
   TrendingDown,
   X,
 } from "lucide-react";
 
 import { MultiCoinChart, CHART_KNOWN_SYMBOLS } from "@/components/multi-coin-chart";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 import { analyseIntent } from "@/lib/api";
 import { useCopilotRuntime } from "@/lib/use-copilot-runtime";
 import type { IntentResponse, Opportunity } from "@/lib/types";
 
+import { AppAuthButton } from "@/components/auth/app-auth-button";
 import { EventLogPanel } from "@/components/event-log-panel";
 import { ExecutionTimeline } from "@/components/execution-timeline";
 import { MonteCarloPanel } from "@/components/monte-carlo-panel";
 import { RouteInspector } from "@/components/route-inspector";
 import { StatusSummaryBar } from "@/components/status-summary-bar";
+import { ProductTour } from "@/components/tour/product-tour";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -32,10 +36,10 @@ type MatrixView = "whisker" | "scatter" | "decompose" | "heat" | "markets";
 type SortKey = "confidence" | "profit" | "fees" | "slippage" | "latency";
 
 const CHAINS = [
-  { name: "Solana", color: "#9945FF", bgClass: "bg-[#9945FF]", borderClass: "border-[#9945FF]" },
-  { name: "Base", color: "#3B82F6", bgClass: "bg-blue-500", borderClass: "border-blue-500" },
-  { name: "Ethereum", color: "#818CF8", bgClass: "bg-indigo-400", borderClass: "border-indigo-400" },
-  { name: "Arbitrum", color: "#38BDF8", bgClass: "bg-sky-400", borderClass: "border-sky-400" },
+  { name: "Solana",   color: "#9945FF", bgClass: "bg-[#9945FF]",  borderClass: "border-[#9945FF]",  logo: "/solanalogo.webp" },
+  { name: "Base",     color: "#3B82F6", bgClass: "bg-blue-500",   borderClass: "border-blue-500",   logo: "/baselogo.png" },
+  { name: "Ethereum", color: "#818CF8", bgClass: "bg-indigo-400", borderClass: "border-indigo-400", logo: "/ethereumlogo.png" },
+  { name: "Arbitrum", color: "#38BDF8", bgClass: "bg-sky-400",    borderClass: "border-sky-400",    logo: "/arbitrumlogo.png" },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -105,25 +109,26 @@ function ChainFilterBadge({
     <button
       type="button"
       onClick={onToggle}
-      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 transition-all duration-150 ${
+      className={`flex items-center gap-1.5 rounded-full border px-2 py-1 transition-all duration-150 ${
         isActive
-          ? "border-opacity-60 bg-opacity-15 text-white"
-          : "border-white/[0.07] bg-white/[0.03] text-white/40 hover:text-white/70"
+          ? "border-opacity-60 bg-opacity-15"
+          : "border-white/[0.07] bg-white/[0.03] hover:bg-white/[0.09]"
       }`}
       style={
         isActive
-          ? { borderColor: chain.color + "99", backgroundColor: chain.color + "22" }
-          : undefined
+          ? { borderColor: chain.color + "99", backgroundColor: chain.color + "22", color: "var(--txt-1)" }
+          : { color: "var(--txt-3)" }
       }
     >
-      <span
-        className="h-1.5 w-1.5 rounded-full transition-all"
+      <div
+        className="h-4 w-4 shrink-0 overflow-hidden rounded-full"
         style={{
-          backgroundColor: chain.color,
-          boxShadow: isActive ? `0 0 6px ${chain.color}` : undefined,
-          opacity: isActive ? 1 : 0.4,
+          opacity: isActive ? 1 : 0.55,
+          boxShadow: isActive ? `0 0 6px ${chain.color}60` : undefined,
         }}
-      />
+      >
+        <Image src={chain.logo} alt={chain.name} width={16} height={16} className="h-full w-full object-cover" />
+      </div>
       <span className="font-mono text-[10px] font-medium">{chain.name}</span>
       {count > 0 && (
         <span
@@ -131,7 +136,7 @@ function ChainFilterBadge({
           style={
             isActive
               ? { backgroundColor: chain.color + "33", color: chain.color }
-              : { backgroundColor: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.35)" }
+              : { backgroundColor: "var(--surface-3)", color: "var(--txt-3)" }
           }
         >
           {count}
@@ -163,11 +168,11 @@ function MatrixToolbar({
   visibleCount: number;
 }) {
   const views: { key: MatrixView; label: string }[] = [
+    { key: "markets", label: "Markets" },
     { key: "whisker", label: "Whisker" },
     { key: "scatter", label: "Scatter" },
     { key: "decompose", label: "Decompose" },
     { key: "heat", label: "Heatmap" },
-    { key: "markets", label: "Markets" },
   ];
   const sorts: { key: SortKey; label: string }[] = [
     { key: "confidence", label: "Confidence" },
@@ -189,8 +194,9 @@ function MatrixToolbar({
             className={`rounded-md px-3 py-1 font-mono text-[10px] font-medium transition-all duration-150 ${
               view === v.key
                 ? "bg-solviolet text-white shadow-sm"
-                : "text-white/40 hover:text-white/70"
+                : "hover:text-white/70"
             }`}
+            style={view === v.key ? undefined : { color: "var(--txt-3)" }}
           >
             {v.label}
           </button>
@@ -199,14 +205,15 @@ function MatrixToolbar({
 
       {/* Sort */}
       <div className="flex items-center gap-1.5">
-        <Filter className="h-3 w-3 text-white/25" />
+        <Filter className="h-3 w-3" style={{ color: "var(--txt-4)" }} />
         <select
           value={sort}
           onChange={(e) => onSortChange(e.target.value as SortKey)}
-          className="rounded-md border border-white/[0.07] bg-white/[0.03] px-2 py-1 font-mono text-[10px] text-white/55 focus:outline-none focus:ring-1 focus:ring-solviolet/50"
+          className="rounded-md border border-white/[0.07] bg-white/[0.03] px-2 py-1 font-mono text-[10px] focus:outline-none focus:ring-1 focus:ring-solviolet/50"
+          style={{ color: "var(--txt-2)", background: "var(--surface-2)" }}
         >
           {sorts.map((s) => (
-            <option key={s.key} value={s.key} className="bg-[#080B11]">
+            <option key={s.key} value={s.key} style={{ background: "var(--surface)" }}>
               {s.label}
             </option>
           ))}
@@ -220,15 +227,18 @@ function MatrixToolbar({
         className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] transition-all duration-150 ${
           showRejected
             ? "border-red-500/30 bg-red-500/10 text-red-400"
-            : "border-white/[0.07] bg-white/[0.03] text-white/35 hover:text-white/60"
+            : "border-white/[0.07] bg-white/[0.03]"
         }`}
+        style={showRejected ? undefined : { color: "var(--txt-3)" }}
       >
-        <span className={`h-1.5 w-1.5 rounded-full ${showRejected ? "bg-red-400" : "bg-white/20"}`} />
+        <span className={`h-1.5 w-1.5 rounded-full ${showRejected ? "bg-red-400" : ""}`}
+          style={showRejected ? undefined : { backgroundColor: "var(--txt-4)" }}
+        />
         Rejected
       </button>
 
       {/* Route count */}
-      <div className="ml-auto font-mono text-[10px] text-white/25">
+      <div className="ml-auto font-mono text-[10px]" style={{ color: "var(--txt-4)" }}>
         {visibleCount === totalCount
           ? `${totalCount} route${totalCount !== 1 ? "s" : ""}`
           : `${visibleCount} / ${totalCount} routes`}
@@ -266,8 +276,8 @@ function BoxWhiskerChart({
     return (
       <div ref={containerRef} className="flex h-full items-center justify-center">
         <div className="text-center">
-          <Radar className="mx-auto h-8 w-8 text-white/15" />
-          <p className="mt-3 text-xs text-white/25">No routes to display</p>
+          <Radar className="mx-auto h-8 w-8" style={{ color: "var(--txt-4)" }} />
+          <p className="mt-3 text-xs" style={{ color: "var(--txt-4)" }}>No routes to display</p>
         </div>
       </div>
     );
@@ -325,13 +335,13 @@ function BoxWhiskerChart({
             <g key={t}>
               <line
                 x1={ML} y1={y} x2={dims.width - MR} y2={y}
-                stroke="rgba(255,255,255,0.06)" strokeWidth={1}
+                stroke="var(--chart-grid)" strokeWidth={1}
                 strokeDasharray="4 4"
               />
               <text
                 x={ML - 6} y={y}
                 textAnchor="end" dominantBaseline="middle"
-                fill="rgba(255,255,255,0.3)" fontSize={9}
+                fill="var(--chart-label)" fontSize={9}
                 fontFamily="monospace"
               >
                 {t >= 0 ? `+$${t.toFixed(1)}` : `-$${Math.abs(t).toFixed(1)}`}
@@ -441,7 +451,7 @@ function BoxWhiskerChart({
               <text
                 x={cx} y={MT + H + 12}
                 textAnchor="end"
-                fill={isSelected ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.35)"}
+                fill={isSelected ? "var(--chart-label-bright)" : "var(--chart-label-faint)"}
                 fontSize={9} fontFamily="monospace"
                 transform={`rotate(-40 ${cx} ${MT + H + 12})`}
               >
@@ -450,7 +460,7 @@ function BoxWhiskerChart({
               <text
                 x={cx} y={MT + H + 24}
                 textAnchor="end"
-                fill="rgba(255,255,255,0.2)"
+                fill="var(--chart-label-dim)"
                 fontSize={8} fontFamily="monospace"
                 transform={`rotate(-40 ${cx} ${MT + H + 24})`}
               >
@@ -463,29 +473,32 @@ function BoxWhiskerChart({
         {/* Legend */}
         <g transform={`translate(${ML}, ${MT - 14})`}>
           <rect x={0} y={0} width={10} height={10} fill="rgba(20,241,149,0.3)" stroke="#14F195" strokeWidth={0.8} rx={1} />
-          <text x={14} y={8} fill="rgba(255,255,255,0.35)" fontSize={8} fontFamily="monospace">Approved</text>
+          <text x={14} y={8} fill="var(--chart-label-faint)" fontSize={8} fontFamily="monospace">Approved</text>
           <rect x={70} y={0} width={10} height={10} fill="rgba(239,68,68,0.15)" stroke="#ef4444" strokeWidth={0.8} rx={1} />
-          <text x={84} y={8} fill="rgba(255,255,255,0.35)" fontSize={8} fontFamily="monospace">Rejected</text>
+          <text x={84} y={8} fill="var(--chart-label-faint)" fontSize={8} fontFamily="monospace">Rejected</text>
           <rect x={140} y={3} width={8} height={8} fill="#14F195" transform="rotate(45 144 7)" />
-          <text x={154} y={8} fill="rgba(255,255,255,0.35)" fontSize={8} fontFamily="monospace">Expected value</text>
-          <line x1={240} y1={4} x2={260} y2={4} stroke="rgba(255,255,255,0.3)" strokeWidth={1} />
-          <line x1={250} y1={1} x2={250} y2={8} stroke="rgba(255,255,255,0.3)" strokeWidth={0.8} />
-          <text x={264} y={8} fill="rgba(255,255,255,0.35)" fontSize={8} fontFamily="monospace">P10–P90 box, P5/P95 whisker</text>
+          <text x={154} y={8} fill="var(--chart-label-faint)" fontSize={8} fontFamily="monospace">Expected value</text>
+          <line x1={240} y1={4} x2={260} y2={4} stroke="var(--chart-label)" strokeWidth={1} />
+          <line x1={250} y1={1} x2={250} y2={8} stroke="var(--chart-label)" strokeWidth={0.8} />
+          <text x={264} y={8} fill="var(--chart-label-faint)" fontSize={8} fontFamily="monospace">P10–P90 box, P5/P95 whisker</text>
         </g>
       </svg>
 
       {/* Floating tooltip */}
       {tooltip && (
         <div
-          className="pointer-events-none absolute z-20 rounded-xl border border-white/[0.1] bg-[#0D1117]/95 p-3 shadow-xl backdrop-blur-sm"
+          className="pointer-events-none absolute z-20 rounded-xl border p-3 shadow-xl backdrop-blur-sm"
           style={{
+            background: "var(--tooltip-bg)",
+            color: "var(--txt-1)",
+            borderColor: "var(--border)",
             left: tooltip.x + 12,
             top: tooltip.y - 10,
             transform: tooltip.x > dims.width - 220 ? "translateX(-110%)" : undefined,
             maxWidth: 220,
           }}
         >
-          <p className="mb-2 font-mono text-[10px] font-semibold text-white/80">
+          <p className="mb-2 font-mono text-[10px] font-semibold" style={{ color: "var(--txt-1)" }}>
             {tooltip.opp.buy_chain} → {tooltip.opp.bridge_name} → {tooltip.opp.sell_chain}
           </p>
           <div className="space-y-1 font-mono text-[10px]">
@@ -566,7 +579,7 @@ function ScatterChart({
   if (!routes.length) {
     return (
       <div ref={containerRef} className="flex h-full items-center justify-center">
-        <p className="text-xs text-white/25">No routes to display</p>
+        <p className="text-xs" style={{ color: "var(--txt-4)" }}>No routes to display</p>
       </div>
     );
   }
@@ -605,19 +618,19 @@ function ScatterChart({
           <g key={pct}>
             <line
               x1={toX(pct)} y1={MT} x2={toX(pct)} y2={MT + H}
-              stroke="rgba(255,255,255,0.05)" strokeWidth={1}
+              stroke="var(--chart-grid)" strokeWidth={1}
               strokeDasharray={pct === 0.5 ? "4 4" : "2 6"}
             />
             <text
               x={toX(pct)} y={MT + H + 14}
-              textAnchor="middle" fill="rgba(255,255,255,0.25)"
+              textAnchor="middle" fill="var(--chart-label)"
               fontSize={8} fontFamily="monospace"
             >
               {Math.round(pct * 100)}%
             </text>
           </g>
         ))}
-        <text x={ML + W / 2} y={MT + H + 30} textAnchor="middle" fill="rgba(255,255,255,0.2)" fontSize={8} fontFamily="monospace">
+        <text x={ML + W / 2} y={MT + H + 30} textAnchor="middle" fill="var(--chart-label-dim)" fontSize={8} fontFamily="monospace">
           Probability of Profit →
         </text>
 
@@ -627,8 +640,8 @@ function ScatterChart({
           if (y < MT || y > MT + H) return null;
           return (
             <g key={tick}>
-              <line x1={ML} y1={y} x2={ML + W} y2={y} stroke="rgba(255,255,255,0.04)" strokeWidth={1} />
-              <text x={ML - 4} y={y} textAnchor="end" dominantBaseline="middle" fill="rgba(255,255,255,0.25)" fontSize={8} fontFamily="monospace">
+              <line x1={ML} y1={y} x2={ML + W} y2={y} stroke="var(--chart-grid)" strokeWidth={1} />
+              <text x={ML - 4} y={y} textAnchor="end" dominantBaseline="middle" fill="var(--chart-label)" fontSize={8} fontFamily="monospace">
                 {tick >= 0 ? `+$${tick}` : `-$${Math.abs(tick)}`}
               </text>
             </g>
@@ -696,7 +709,7 @@ function ScatterChart({
         {/* Y-axis label */}
         <text
           transform={`translate(12, ${MT + H / 2}) rotate(-90)`}
-          textAnchor="middle" fill="rgba(255,255,255,0.2)"
+          textAnchor="middle" fill="var(--chart-label-dim)"
           fontSize={8} fontFamily="monospace"
         >
           Expected Net Profit ($)
@@ -706,15 +719,18 @@ function ScatterChart({
       {/* Tooltip */}
       {tooltip && (
         <div
-          className="pointer-events-none absolute z-20 rounded-xl border border-white/[0.1] bg-[#0D1117]/95 p-3 shadow-xl backdrop-blur-sm"
+          className="pointer-events-none absolute z-20 rounded-xl border p-3 shadow-xl backdrop-blur-sm"
           style={{
+            background: "var(--tooltip-bg)",
+            color: "var(--txt-1)",
+            borderColor: "var(--border)",
             left: tooltip.x + 12,
             top: tooltip.y - 10,
             transform: tooltip.x > dims.width - 220 ? "translateX(-110%)" : undefined,
             maxWidth: 210,
           }}
         >
-          <p className="mb-1.5 font-mono text-[10px] font-semibold text-white/80">
+          <p className="mb-1.5 font-mono text-[10px] font-semibold" style={{ color: "var(--txt-1)" }}>
             {tooltip.opp.buy_chain} → {tooltip.opp.sell_chain}
           </p>
           <div className="space-y-1 font-mono text-[10px]">
@@ -761,9 +777,9 @@ function WaterfallChart({ route }: { route: Opportunity | null }) {
     return (
       <div ref={containerRef} className="flex h-full items-center justify-center">
         <div className="text-center">
-          <TrendingDown className="mx-auto h-8 w-8 text-white/15" />
-          <p className="mt-3 text-xs text-white/25">Select a route in Whisker or Scatter view</p>
-          <p className="mt-1 text-[10px] text-white/15">to see profit decomposition</p>
+          <TrendingDown className="mx-auto h-8 w-8" style={{ color: "var(--txt-4)" }} />
+          <p className="mt-3 text-xs" style={{ color: "var(--txt-4)" }}>Select a route in Whisker or Scatter view</p>
+          <p className="mt-1 text-[10px]" style={{ color: "var(--txt-4)" }}>to see profit decomposition</p>
         </div>
       </div>
     );
@@ -817,9 +833,9 @@ function WaterfallChart({ route }: { route: Opportunity | null }) {
           return (
             <line key={tick}
               x1={ML} y1={y} x2={dims.width - MR} y2={y}
-              stroke={tick === 0 ? "#ef4444" : "rgba(255,255,255,0.06)"}
+              stroke={tick === 0 ? "#ef4444" : "var(--chart-grid)"}
               strokeWidth={1}
-              strokeOpacity={tick === 0 ? 0.5 : 1}
+              strokeOpacity={tick === 0 ? 0.6 : 1}
               strokeDasharray={tick === 0 ? undefined : "4 4"}
             />
           );
@@ -829,7 +845,7 @@ function WaterfallChart({ route }: { route: Opportunity | null }) {
         <text
           x={ML - 4} y={zeroY}
           textAnchor="end" dominantBaseline="middle"
-          fill="rgba(255,255,255,0.25)" fontSize={8} fontFamily="monospace"
+          fill="var(--chart-label)" fontSize={8} fontFamily="monospace"
         >
           $0
         </text>
@@ -844,7 +860,7 @@ function WaterfallChart({ route }: { route: Opportunity | null }) {
           return (
             <line key={i}
               x1={x1} y1={connY} x2={x2} y2={connY}
-              stroke="rgba(255,255,255,0.15)" strokeWidth={1} strokeDasharray="3 3"
+              stroke="var(--chart-connector)" strokeWidth={1} strokeDasharray="3 3"
             />
           );
         })}
@@ -879,7 +895,7 @@ function WaterfallChart({ route }: { route: Opportunity | null }) {
               <text
                 x={cx} y={MT + H + 16}
                 textAnchor="end"
-                fill={bar.isTotal ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.3)"}
+                fill={bar.isTotal ? "var(--chart-label-mid)" : "var(--chart-label)"}
                 fontSize={8} fontFamily="monospace"
                 transform={`rotate(-35 ${cx} ${MT + H + 16})`}
                 fontWeight={bar.isTotal ? 600 : 400}
@@ -891,7 +907,7 @@ function WaterfallChart({ route }: { route: Opportunity | null }) {
         })}
 
         {/* Title */}
-        <text x={ML} y={MT - 10} fill="rgba(255,255,255,0.4)" fontSize={9} fontFamily="monospace">
+        <text x={ML} y={MT - 10} fill="var(--chart-title)" fontSize={9} fontFamily="monospace">
           Cost decomposition — {route.buy_chain} → {route.bridge_name} → {route.sell_chain}
         </text>
       </svg>
@@ -913,7 +929,7 @@ function HeatmapGrid({
   if (!routes.length) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-xs text-white/25">No routes to display</p>
+        <p className="text-xs" style={{ color: "var(--txt-4)" }}>No routes to display</p>
       </div>
     );
   }
@@ -962,17 +978,17 @@ function HeatmapGrid({
   return (
     <div className="h-full overflow-auto">
       <table className="w-full border-collapse font-mono text-[10px]">
-        <thead className="sticky top-0 z-10 bg-[#080B11]">
+        <thead className="sticky top-0 z-10" style={{ background: "var(--canvas)" }}>
           <tr>
-            <th className="border-b border-r border-white/[0.07] px-3 py-2 text-left text-white/30 font-medium">
+            <th className="border-b border-r border-white/[0.07] px-3 py-2 text-left font-medium" style={{ color: "var(--txt-3)" }}>
               Route
             </th>
             {columns.map((col) => (
-              <th key={col.key} className="border-b border-r border-white/[0.07] px-2 py-2 text-center text-white/30 font-medium whitespace-nowrap">
+              <th key={col.key} className="border-b border-r border-white/[0.07] px-2 py-2 text-center font-medium whitespace-nowrap" style={{ color: "var(--txt-3)" }}>
                 {col.label}
               </th>
             ))}
-            <th className="border-b border-white/[0.07] px-2 py-2 text-center text-white/30 font-medium">
+            <th className="border-b border-white/[0.07] px-2 py-2 text-center font-medium" style={{ color: "var(--txt-3)" }}>
               Status
             </th>
           </tr>
@@ -991,8 +1007,8 @@ function HeatmapGrid({
                 {/* Route label */}
                 <td className={`border-r border-white/[0.07] px-3 py-2 ${isSelected ? "border-l-2 border-l-solviolet" : ""}`}>
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-white/70">{routeLabel(opp)}</span>
-                    <span className="text-[9px] text-white/25">{opp.bridge_name.slice(0, 14)}</span>
+                    <span className="text-white/70" style={{ color: "var(--txt-2)" }}>{routeLabel(opp)}</span>
+                    <span className="text-[9px]" style={{ color: "var(--txt-4)" }}>{opp.bridge_name.slice(0, 14)}</span>
                   </div>
                 </td>
                 {/* Metric cells */}
@@ -1004,14 +1020,14 @@ function HeatmapGrid({
                   const bg = (isMcCol && !hasMc) ? "transparent" : heatColor(rank, col.higherBetter);
                   const textColor = col.key === "netprofit"
                     ? opp.expected_net_profit_usd >= 0 ? "#14F195" : "#f87171"
-                    : "rgba(255,255,255,0.65)";
+                    : "var(--txt-2)";
                   return (
                     <td
                       key={col.key}
                       className="border-r border-white/[0.07] px-2 py-2 text-center tabular-nums"
                       style={{ backgroundColor: bg, color: textColor }}
                     >
-                      {isMcCol && !hasMc ? <span className="text-white/20">—</span> : col.format(opp)}
+                      {isMcCol && !hasMc ? <span style={{ color: "var(--txt-4)" }}>—</span> : col.format(opp)}
                     </td>
                   );
                 })}
@@ -1049,7 +1065,7 @@ function RouteIntelligenceMatrix({
   selectedId: string | null;
   onSelect: (opp: Opportunity) => void;
 }) {
-  const [view, setView] = useState<MatrixView>("whisker");
+  const [view, setView] = useState<MatrixView>("markets");
   const [sort, setSort] = useState<SortKey>("confidence");
   const [showRejected, setShowRejected] = useState(true);
 
@@ -1079,15 +1095,15 @@ function RouteIntelligenceMatrix({
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
         <div className="inline-flex rounded-2xl border border-white/[0.07] bg-white/[0.04] p-5">
-          <Radar className="h-10 w-10 text-white/15" />
+          <Radar className="h-10 w-10" style={{ color: "var(--txt-4)" }} />
         </div>
         <div>
-          <p className="text-sm font-medium text-white/35">Route Intelligence Matrix</p>
-          <p className="mt-1 text-xs text-white/20">
+          <p className="text-sm font-medium" style={{ color: "var(--txt-3)" }}>Route Intelligence Matrix</p>
+          <p className="mt-1 text-xs" style={{ color: "var(--txt-4)" }}>
             Submit an intent in the Command Center to visualize routes
           </p>
         </div>
-        <div className="mt-2 flex items-center gap-3 font-mono text-[10px] text-white/15">
+        <div className="mt-2 flex items-center gap-3 font-mono text-[10px]" style={{ color: "var(--txt-4)" }}>
           <span>Whisker</span><span>·</span><span>Scatter</span><span>·</span><span>Decompose</span><span>·</span><span>Heat</span><span>·</span><span>Markets</span>
         </div>
       </div>
@@ -1112,25 +1128,25 @@ function RouteIntelligenceMatrix({
       {selectedRoute && view !== "markets" && (
         <div className="flex items-center gap-4 overflow-hidden border-b border-white/[0.07] bg-solviolet/[0.06] px-4 py-2 transition-all duration-200">
           <div className="flex items-center gap-2 font-mono text-[10px]">
-            <span className="text-white/50">{selectedRoute.buy_chain}</span>
-            <ArrowRight className="h-3 w-3 text-white/25" />
+            <span style={{ color: "var(--txt-2)" }}>{selectedRoute.buy_chain}</span>
+            <ArrowRight className="h-3 w-3" style={{ color: "var(--txt-4)" }} />
             <span className="text-solviolet/80">{selectedRoute.bridge_name}</span>
-            <ArrowRight className="h-3 w-3 text-white/25" />
-            <span className="text-white/50">{selectedRoute.sell_chain}</span>
+            <ArrowRight className="h-3 w-3" style={{ color: "var(--txt-4)" }} />
+            <span style={{ color: "var(--txt-2)" }}>{selectedRoute.sell_chain}</span>
           </div>
           <div className="flex items-center gap-3 font-mono text-[10px]">
             <span className={`font-semibold ${selectedRoute.expected_net_profit_usd >= 0 ? "text-solmint" : "text-red-400"}`}>
               {fmtUsd(selectedRoute.expected_net_profit_usd)}
             </span>
-            <span className="text-white/25">·</span>
-            <span className="text-white/45">{Math.round(selectedRoute.confidence_score * 100)}% conf.</span>
+            <span style={{ color: "var(--txt-4)" }}>·</span>
+            <span style={{ color: "var(--txt-3)" }}>{Math.round(selectedRoute.confidence_score * 100)}% conf.</span>
             {selectedRoute.monte_carlo && (
               <>
-                <span className="text-white/25">·</span>
-                <span className="text-white/45">
+                <span style={{ color: "var(--txt-4)" }}>·</span>
+                <span style={{ color: "var(--txt-3)" }}>
                   P(profit) {Math.round(selectedRoute.monte_carlo.probability_of_profit * 100)}%
                 </span>
-                <span className="text-white/25">·</span>
+                <span style={{ color: "var(--txt-4)" }}>·</span>
                 <span className={selectedRoute.monte_carlo.sharpe_approx >= 1 ? "text-solmint/70" : "text-amber-400/70"}>
                   Sharpe {selectedRoute.monte_carlo.sharpe_approx.toFixed(2)}
                 </span>
@@ -1200,31 +1216,32 @@ function CommandCenter({
   };
 
   return (
-    <div className="flex h-full flex-col gap-4 p-4">
+    <div className="flex h-full flex-col gap-4 overflow-y-auto p-4">
       <div className="flex items-center gap-2.5">
         <div className="inline-flex rounded-lg border border-white/[0.07] bg-white/[0.04] p-1.5">
-          <TerminalSquare className="h-3.5 w-3.5 text-solviolet" />
+          <Command className="h-3.5 w-3.5 text-solviolet" />
         </div>
         <div>
-          <p className="text-xs font-semibold text-white/65">Command Center</p>
-          <p className="text-[10px] text-white/30">Natural language routing</p>
+          <p className="text-xs font-semibold" style={{ color: "var(--txt-2)" }}>Command Center</p>
+          <p className="text-[10px]" style={{ color: "var(--txt-3)" }}>Natural language routing</p>
         </div>
       </div>
 
-      <div className="relative">
+      <div className="flex flex-col gap-2">
         <textarea
           rows={4}
           value={intentQuery}
           onChange={(e) => setIntentQuery(e.target.value)}
           onKeyDown={handleKey}
           placeholder="Describe your trade in plain English…"
-          className="terminal w-full resize-none p-3 font-mono text-xs text-white/80 placeholder:text-white/20 focus:outline-none"
+          className="terminal w-full resize-none p-3 font-mono text-xs focus:outline-none"
+          style={{ color: "var(--txt-1)" }}
         />
         <button
           type="button"
           disabled={isAnalysing || !intentQuery.trim()}
           onClick={onSubmit}
-          className="btn-gradient absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+          className="btn-gradient self-start inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
         >
           {isAnalysing ? (
             <><Loader2 className="h-3 w-3 animate-spin" />Analysing</>
@@ -1235,13 +1252,14 @@ function CommandCenter({
       </div>
 
       <div className="space-y-1.5">
-        <p className="text-[10px] uppercase tracking-[0.24em] text-white/25">Try</p>
+        <p className="text-[10px] uppercase tracking-[0.24em]" style={{ color: "var(--txt-4)" }}>Try</p>
         {EXAMPLE_INTENTS.map((ex) => (
           <button
             key={ex}
             type="button"
             onClick={() => onSelectExample(ex)}
-            className="w-full rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-left font-mono text-[10px] text-white/40 transition hover:border-solviolet/30 hover:bg-solviolet/[0.06] hover:text-white/70"
+            className="w-full rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-left font-mono text-[10px] transition hover:border-solviolet/30 hover:bg-solviolet/[0.06]"
+            style={{ color: "var(--txt-3)" }}
           >
             {ex}
           </button>
@@ -1249,26 +1267,26 @@ function CommandCenter({
       </div>
 
       {intentResponse && (
-        <div className="mt-auto rounded-xl border border-white/[0.07] bg-white/[0.03] p-3 space-y-1.5">
-          <p className="text-[10px] uppercase tracking-[0.24em] text-white/25">Parsed</p>
+        <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-3 space-y-1.5">
+          <p className="text-[10px] uppercase tracking-[0.24em]" style={{ color: "var(--txt-4)" }}>Parsed</p>
           <p className="font-mono text-xs text-solmint">{intentResponse.parsed_intent}</p>
           <div className="flex flex-wrap gap-1.5">
             {intentResponse.asset_from && (
-              <span className="rounded-full border border-white/[0.07] bg-white/[0.04] px-2 py-0.5 font-mono text-[9px] text-white/45">
+              <span className="rounded-full border border-white/[0.07] bg-white/[0.04] px-2 py-0.5 font-mono text-[9px]" style={{ color: "var(--txt-3)" }}>
                 {intentResponse.asset_from}
               </span>
             )}
             {intentResponse.asset_to && (
-              <span className="rounded-full border border-white/[0.07] bg-white/[0.04] px-2 py-0.5 font-mono text-[9px] text-white/45">
+              <span className="rounded-full border border-white/[0.07] bg-white/[0.04] px-2 py-0.5 font-mono text-[9px]" style={{ color: "var(--txt-3)" }}>
                 → {intentResponse.asset_to}
               </span>
             )}
             {intentResponse.amount_usd && (
-              <span className="rounded-full border border-white/[0.07] bg-white/[0.04] px-2 py-0.5 font-mono text-[9px] text-white/45">
+              <span className="rounded-full border border-white/[0.07] bg-white/[0.04] px-2 py-0.5 font-mono text-[9px]" style={{ color: "var(--txt-3)" }}>
                 ~${intentResponse.amount_usd.toLocaleString()}
               </span>
             )}
-            <span className="rounded-full border border-white/[0.07] bg-white/[0.04] px-2 py-0.5 font-mono text-[9px] text-white/35">
+            <span className="rounded-full border border-white/[0.07] bg-white/[0.04] px-2 py-0.5 font-mono text-[9px]" style={{ color: "var(--txt-3)" }}>
               {intentResponse.total} route{intentResponse.total !== 1 ? "s" : ""}
             </span>
           </div>
@@ -1306,6 +1324,51 @@ function MissionControlInner() {
   const [intentResponse, setIntentResponse] = useState<IntentResponse | null>(null);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [analyseError, setAnalyseError] = useState<string | null>(null);
+
+  // Bookmark state
+  const [savedOpportunityIds, setSavedOpportunityIds] = useState<Set<string>>(new Set());
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveConfirmId, setSaveConfirmId] = useState<string | null>(null);
+
+  // Save/bookmark handler
+  const saveCurrentOpportunity = useCallback(async () => {
+    if (!selectedOpportunity || isSaving) return;
+    if (savedOpportunityIds.has(selectedOpportunity.id)) return;
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/simulations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          opportunityId: selectedOpportunity.id,
+          assetSymbol: selectedOpportunity.asset_symbol,
+          buyChain: selectedOpportunity.buy_chain,
+          buyVenue: selectedOpportunity.buy_venue ?? "",
+          sellChain: selectedOpportunity.sell_chain,
+          sellVenue: selectedOpportunity.sell_venue ?? "",
+          bridgeName: selectedOpportunity.bridge_name ?? "",
+          notionalUsd: selectedOpportunity.notional_usd ?? 0,
+          grossSpreadBps: selectedOpportunity.gross_spread_bps ?? 0,
+          expectedNetProfitUsd: selectedOpportunity.expected_net_profit_usd ?? 0,
+          confidenceScore: selectedOpportunity.confidence_score ?? 0,
+          estimatedFeesUsd: selectedOpportunity.estimated_fees_usd ?? 0,
+          estimatedSlippageBps: selectedOpportunity.estimated_slippage_bps ?? 0,
+          estimatedBridgeLatencySec: selectedOpportunity.estimated_bridge_latency_sec ?? 0,
+          approvalStage: selectedOpportunity.execute ? "approved" : "rejected",
+          approvalReason: selectedOpportunity.approval_reason ?? null,
+          monteCarlo: selectedOpportunity.monte_carlo ?? null,
+          costBreakdown: selectedOpportunity.cost_breakdown ?? null,
+        }),
+      });
+      if (res.ok) {
+        setSavedOpportunityIds((prev) => new Set([...prev, selectedOpportunity.id]));
+        setSaveConfirmId(selectedOpportunity.id);
+        setTimeout(() => setSaveConfirmId(null), 2000);
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  }, [selectedOpportunity, isSaving, savedOpportunityIds]);
 
   // Chain filter + matrix state
   const [chainFilter, setChainFilter] = useState<Set<string>>(new Set());
@@ -1358,7 +1421,6 @@ function MissionControlInner() {
 
   function handleSelectExample(ex: string) {
     setIntentQuery(ex);
-    void handleSubmitIntent(ex);
   }
 
   function handleSelectRoute(opp: Opportunity) {
@@ -1377,8 +1439,10 @@ function MissionControlInner() {
 
   return (
     <div
-      className="grid h-screen w-screen overflow-hidden bg-background text-foreground"
+      className="grid h-screen w-screen overflow-hidden"
       style={{
+        background: "var(--canvas)",
+        color: "var(--txt-1)",
         gridTemplateRows: "68px 1fr 220px",
         gridTemplateColumns: "320px 1fr 380px",
         gridTemplateAreas: `
@@ -1390,8 +1454,8 @@ function MissionControlInner() {
     >
       {/* ── Header ── */}
       <header
-        className="flex items-center gap-3 border-b border-white/[0.07] bg-[#080B11]/95 px-4"
-        style={{ gridArea: "header" }}
+        className="flex items-center gap-3 border-b border-white/[0.07] px-4"
+        style={{ gridArea: "header", background: `rgba(var(--canvas-rgb), 0.95)` }}
       >
         {/* Logo */}
         <div className="flex shrink-0 items-center gap-2">
@@ -1405,7 +1469,7 @@ function MissionControlInner() {
               className="object-cover"
             />
           </div>
-          <span className="text-xs font-semibold text-white">OwlSight</span>
+          <span className="text-xs font-semibold" style={{ color: "var(--txt-1)" }}>OwlSight</span>
           <span className="rounded-full border border-solviolet/30 bg-solviolet/10 px-2.5 py-0.5 text-xs font-semibold text-white">
             Mission Control
           </span>
@@ -1413,31 +1477,37 @@ function MissionControlInner() {
 
         <div className="mx-2 h-4 w-px shrink-0 bg-white/[0.08]" />
 
-        {/* Chain filter buttons */}
-        <div className="flex items-center gap-1.5">
-          {chainCounts.map((chain) => (
-            <ChainFilterBadge
-              key={chain.name}
-              chain={chain}
-              count={chain.count}
-              isActive={chainFilter.has(chain.name)}
-              onToggle={() => toggleChain(chain.name)}
-            />
-          ))}
-          {chainFilter.size > 0 && (
-            <button
-              type="button"
-              onClick={() => setChainFilter(new Set())}
-              className="flex items-center gap-1 rounded-full border border-white/[0.07] bg-white/[0.03] px-2 py-1 font-mono text-[10px] text-white/30 hover:text-white/60 transition-colors"
-            >
-              <X className="h-2.5 w-2.5" />
-              All
-            </button>
-          )}
-        </div>
+        {/* Chain filter buttons — only shown once routes exist */}
+        {chainCounts.some((c) => c.count > 0) && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-medium" style={{ color: "var(--txt-4)" }}>Filter:</span>
+            {chainCounts.filter((c) => c.count > 0).map((chain) => (
+              <ChainFilterBadge
+                key={chain.name}
+                chain={chain}
+                count={chain.count}
+                isActive={chainFilter.has(chain.name)}
+                onToggle={() => toggleChain(chain.name)}
+              />
+            ))}
+            {chainFilter.size > 0 && (
+              <button
+                type="button"
+                onClick={() => setChainFilter(new Set())}
+                className="flex items-center gap-1 rounded-full border border-white/[0.07] bg-white/[0.03] px-2 py-1 font-mono text-[10px] transition-colors hover:bg-white/[0.09]"
+                style={{ color: "var(--txt-3)" }}
+              >
+                <X className="h-2.5 w-2.5" />
+                All
+              </button>
+            )}
+          </div>
+        )}
 
-        {/* Status bar */}
-        <div className="ml-auto shrink-0">
+        {/* Status bar + theme toggle + auth */}
+        <div data-tour="status-bar" className="ml-auto flex items-center gap-2 shrink-0">
+          <ThemeToggle />
+          <AppAuthButton />
           <StatusSummaryBar
             compact
             marketProviderLabel={marketDataPresentation.label}
@@ -1461,8 +1531,9 @@ function MissionControlInner() {
 
       {/* ── Left: Command Center ── */}
       <aside
-        className="overflow-hidden border-r border-white/[0.07] bg-[#080B11]"
-        style={{ gridArea: "left" }}
+        data-tour="intent-input"
+        className="overflow-hidden border-r border-white/[0.07]"
+        style={{ gridArea: "left", background: "var(--canvas)" }}
       >
         <CommandCenter
           intentQuery={intentQuery}
@@ -1481,8 +1552,9 @@ function MissionControlInner() {
 
       {/* ── Center: Route Intelligence Matrix ── */}
       <main
-        className="overflow-hidden border-r border-white/[0.07] bg-[#060910]"
-        style={{ gridArea: "center" }}
+        data-tour="route-cards"
+        className="overflow-hidden border-r border-white/[0.07]"
+        style={{ gridArea: "center", background: "var(--canvas)" }}
       >
         <RouteIntelligenceMatrix
           intentResponse={intentResponse}
@@ -1494,8 +1566,9 @@ function MissionControlInner() {
 
       {/* ── Right: Analyzer ── */}
       <aside
-        className="flex flex-col overflow-hidden bg-[#080B11]"
-        style={{ gridArea: "right" }}
+        data-tour="right-panel"
+        className="flex flex-col overflow-hidden"
+        style={{ gridArea: "right", background: "var(--surface)" }}
       >
         <div className="flex-1 overflow-y-auto">
           {intentResponse ? (
@@ -1516,18 +1589,46 @@ function MissionControlInner() {
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
               <div className="inline-flex rounded-xl border border-white/[0.07] bg-white/[0.03] p-3">
-                <Radar className="h-6 w-6 text-white/15" />
+                <Radar className="h-6 w-6" style={{ color: "var(--txt-4)" }} />
               </div>
               <div>
-                <p className="text-xs font-medium text-white/30">Decision Engine</p>
-                <p className="mt-1 text-[10px] text-white/20">
+                <p className="text-xs font-medium" style={{ color: "var(--txt-3)" }}>Decision Engine</p>
+                <p className="mt-1 text-[10px]" style={{ color: "var(--txt-4)" }}>
                   Submit an intent to analyse a route
                 </p>
               </div>
             </div>
           )}
         </div>
-        <div className="border-t border-white/[0.07] p-4">
+        <div className="border-t border-white/[0.07] p-4 space-y-2">
+          {/* Bookmark button */}
+          {selectedOpportunity && (
+            <button
+              data-tour="save-button"
+              type="button"
+              disabled={isSaving || savedOpportunityIds.has(selectedOpportunity.id)}
+              onClick={saveCurrentOpportunity}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border py-2.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-white/[0.04]"
+              style={{ borderColor: "var(--border)", color: "var(--txt-3)" }}
+            >
+              {savedOpportunityIds.has(selectedOpportunity.id) || saveConfirmId === selectedOpportunity.id ? (
+                <>
+                  <BookmarkCheck className="h-3.5 w-3.5" style={{ color: "#14F195" }} />
+                  <span style={{ color: "#14F195" }}>Saved to Library</span>
+                </>
+              ) : isSaving ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                <>
+                  <Bookmark className="h-3.5 w-3.5" />
+                  Save Simulation
+                </>
+              )}
+            </button>
+          )}
           <button
             type="button"
             disabled={
@@ -1553,10 +1654,10 @@ function MissionControlInner() {
 
       {/* ── Bottom: Execution Terminal ── */}
       <footer
-        className="grid overflow-hidden border-t border-white/[0.07] bg-[#060910]"
-        style={{ gridArea: "bottom", gridTemplateColumns: "1fr 1fr" }}
+        className="grid overflow-hidden border-t border-white/[0.07]"
+        style={{ gridArea: "bottom", gridTemplateColumns: "1fr 1fr", background: "var(--canvas)" }}
       >
-        <div className="overflow-y-auto border-r border-white/[0.07] p-3">
+        <div className="flex flex-col overflow-hidden border-r border-white/[0.07]">
           <ExecutionTimeline
             execution={execution}
             opportunity={selectedOpportunity ?? null}
@@ -1564,7 +1665,7 @@ function MissionControlInner() {
             hummingbotPresentation={hummingbotPresentation}
           />
         </div>
-        <div className="overflow-y-auto p-3">
+        <div className="flex flex-col overflow-hidden">
           <EventLogPanel entries={eventLog} />
         </div>
       </footer>
@@ -1576,14 +1677,17 @@ function MissionControlInner() {
 
 export function MissionControlPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex h-screen w-screen items-center justify-center bg-background">
-          <Loader2 className="h-6 w-6 animate-spin text-white/30" />
-        </div>
-      }
-    >
-      <MissionControlInner />
-    </Suspense>
+    <>
+      <Suspense
+        fallback={
+          <div className="flex h-screen w-screen items-center justify-center" style={{ background: "var(--canvas)" }}>
+            <Loader2 className="h-6 w-6 animate-spin" style={{ color: "var(--txt-3)" }} />
+          </div>
+        }
+      >
+        <MissionControlInner />
+      </Suspense>
+      <ProductTour />
+    </>
   );
 }

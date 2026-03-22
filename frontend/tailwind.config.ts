@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: "class",
   content: [
     "./src/app/**/*.{ts,tsx}",
     "./src/components/**/*.{ts,tsx}",
@@ -13,16 +14,12 @@ const config: Config = {
         solviolet: "#9945FF",
         solmint: "#14F195",
         mint: "#14F195",
-        // Dark surface system
-        canvas: "#080B11",
-        surface: "#0E1219",
-        "surface-2": "#141A24",
-        "surface-3": "#1B2232",
-        "surface-4": "#212A3E",
-        // Text system
-        "text-primary": "#FFFFFF",
-        "text-secondary": "rgba(255,255,255,0.58)",
-        "text-muted": "rgba(255,255,255,0.32)",
+        // Theme-aware surface system (resolved via CSS variables)
+        canvas:      "var(--canvas)",
+        surface:     "var(--surface)",
+        "surface-2": "var(--surface-2)",
+        "surface-3": "var(--surface-3)",
+        "surface-4": "var(--surface-4)",
         // Status
         "status-green": "#14F195",
         "status-amber": "#F59E0B",

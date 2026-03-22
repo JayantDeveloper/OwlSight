@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   executeOpportunity,
@@ -153,8 +153,8 @@ function deriveHummingbotPresentationStatus(
   if (execution?.fallback_used) {
     return {
       state: "failover",
-      label: "Hummingbot Unavailable",
-      detail: "Failover to Mock Execution",
+      label: "Failover Active",
+      detail: "Fell back to mock execution",
       tone: "warning",
     };
   }
@@ -165,19 +165,19 @@ function deriveHummingbotPresentationStatus(
   ) {
     return {
       state: "connected",
-      label: "Hummingbot Connected",
-      detail: "Paper Trading Ready",
+      label: "Hummingbot Live",
+      detail: "Paper trading ready",
       tone: "positive",
     };
   }
 
   return {
     state: "simulation",
-    label: "Hummingbot Simulation",
+    label: "Paper Mode",
     detail:
       executionModeConfigured === "paper_hummingbot"
-        ? "Paper Trading Emulated"
-        : "Mock Execution Primary",
+        ? "Configured for paper trade"
+        : "Mock execution primary",
     tone: "neutral",
   };
 }
@@ -204,6 +204,9 @@ export function useCopilotRuntime() {
   const [error, setError] = useState<string | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
   const [isDemoBusy, setIsDemoBusy] = useState(false);
+
+  // Auto-save: track which execution IDs have already been persisted
+  const savedExecutionIds = useRef<Set<string>>(new Set());
 
   const applyOpportunityResponse = useCallback((response: OpportunityListResponse) => {
     setOpportunities(response.opportunities);
@@ -431,8 +434,7 @@ export function useCopilotRuntime() {
       return {
         label: executionEngineLabel,
         detail:
-          execution.executor ||
-          "API did not return executor. Execution target is unclear.",
+          execution.executor || "Executor not specified.",
         tone: execution.fallback_used
           ? "warning"
           : execution.execution_mode === "paper_hummingbot"
@@ -446,9 +448,9 @@ export function useCopilotRuntime() {
         label: "Paper Trade",
         detail: hummingbotStatus
           ? hummingbotStatus.state === "connected"
-            ? "Configured by backend for Hummingbot paper trading."
-            : "Configured for paper trade, currently emulated until Hummingbot acknowledges."
-          : "API did not return hummingbot_status. Showing emulated paper-trade state.",
+            ? "Hummingbot paper trading active."
+            : "Paper trade mode, awaiting Hummingbot."
+          : "Hummingbot status unavailable, emulating.",
         tone: hummingbotStatus?.state === "connected" ? "positive" : hummingbotStatus ? "neutral" : "warning",
       };
     }
@@ -484,7 +486,7 @@ export function useCopilotRuntime() {
     if (demoSession.active_scenario === "fallback") {
       return {
         label: "Failover Armed",
-        detail: "The current demo session will force Hummingbot failover on execution.",
+        detail: "Session will force Hummingbot failover.",
         tone: "warning",
       };
     }
@@ -502,10 +504,10 @@ export function useCopilotRuntime() {
         label: demoSessionLabel,
         detail:
           demoSession.active_scenario === "none"
-            ? "Backend live feed mode."
+            ? "Live feed mode."
             : demoSession.is_replay
-              ? `Replay ${demoSession.replay_count} in progress.`
-              : "Backend deterministic scenario is armed.",
+              ? `Replay ${demoSession.replay_count} running.`
+              : "Scenario armed.",
         tone: demoSession.active_scenario === "none" ? "neutral" : "warning",
       };
     }
@@ -518,6 +520,88 @@ export function useCopilotRuntime() {
   }, [demoSession.active_scenario, demoSession.is_replay, demoSession.replay_count, demoSessionLabel, responseWarnings]);
 
   const recentEvents = useMemo(() => eventLog.slice().reverse().slice(0, 4), [eventLog]);
+
+  // Auto-save execution + simulation when terminal state is reached
+  useEffect(() => {
+    if (!execution || !execution.terminal) return;
+    if (savedExecutionIds.current.has(execution.id)) return;
+    savedExecutionIds.current.add(execution.id);
+
+    const exec = execution; // capture non-null reference
+    const opportunity = opportunities.find((o) => o.id === exec.opportunity_id);
+
+    async function autoSave() {
+      try {
+        let simulationId: string | null = null;
+
+        // 1. Save simulation snapshot if we have the opportunity
+        if (opportunity) {
+          const simRes = await fetch("/api/simulations", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              opportunityId: opportunity.id,
+              assetSymbol: opportunity.asset_symbol,
+              buyChain: opportunity.buy_chain,
+              buyVenue: opportunity.buy_venue,
+              sellChain: opportunity.sell_chain,
+              sellVenue: opportunity.sell_venue,
+              bridgeName: opportunity.bridge_name ?? "",
+              notionalUsd: opportunity.notional_usd ?? 0,
+              grossSpreadBps: opportunity.gross_spread_bps ?? 0,
+              expectedNetProfitUsd: opportunity.expected_net_profit_usd ?? 0,
+              confidenceScore: opportunity.confidence_score ?? 0,
+              estimatedFeesUsd: opportunity.estimated_fees_usd ?? 0,
+              estimatedSlippageBps: opportunity.estimated_slippage_bps ?? 0,
+              estimatedBridgeLatencySec: opportunity.estimated_bridge_latency_sec ?? 0,
+              approvalStage: opportunity.execute ? "approved" : "rejected",
+              approvalReason: opportunity.approval_reason ?? null,
+              monteCarlo: opportunity.monte_carlo ?? null,
+              costBreakdown: opportunity.cost_breakdown ?? null,
+            }),
+          });
+          if (simRes.ok) {
+            const json = await simRes.json();
+            simulationId = json.simulation?.id ?? null;
+          }
+        }
+
+        // 2. Save execution record
+        await fetch("/api/executions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            simulationId,
+            executionId: exec.id,
+            requestId: exec.request_id ?? null,
+            opportunityId: exec.opportunity_id,
+            assetSymbol: opportunity?.asset_symbol ?? "",
+            buyChain: opportunity?.buy_chain ?? "",
+            sellChain: opportunity?.sell_chain ?? "",
+            bridgeName: opportunity?.bridge_name ?? "",
+            notionalUsd: opportunity?.notional_usd ?? 0,
+            expectedNetProfitUsd: opportunity?.expected_net_profit_usd ?? 0,
+            confidenceScore: opportunity?.confidence_score ?? 0,
+            executionModeRequested: exec.execution_mode_requested ?? executionModeConfigured,
+            executionModeUsed: exec.execution_mode ?? executionModeConfigured,
+            status: exec.fallback_used
+              ? "fallback"
+              : exec.status === "rejected"
+              ? "rejected"
+              : "completed",
+            fallbackReason: exec.fallback_reason ?? null,
+            rejectionReason: exec.rejection_reason ?? null,
+            timeline: exec.timeline_events ?? null,
+            completedAt: new Date().toISOString(),
+          }),
+        });
+      } catch {
+        // Fire-and-forget: silently ignore save errors
+      }
+    }
+
+    autoSave();
+  }, [execution, opportunities, executionModeConfigured]);
 
   const selectOpportunity = useCallback((opportunityId: string) => {
     setSelectedOpportunityId(opportunityId);

@@ -1,6 +1,7 @@
 SHELL := /bin/zsh
 
-.PHONY: frontend-install frontend-dev backend-venv backend-install backend-dev backend-test
+.PHONY: frontend-install frontend-dev backend-venv backend-install backend-dev backend-test \
+        hummingbot-up hummingbot-down hummingbot-attach hummingbot-logs hummingbot-update
 
 frontend-install:
 	cd frontend && npm install
@@ -19,4 +20,26 @@ backend-dev:
 
 backend-test:
 	cd backend && source .venv/bin/activate && pytest
+
+# ── Hummingbot ──────────────────────────────────────────────────────────────
+
+hummingbot-up:
+	cd hummingbot && docker compose up -d gateway
+	@echo "Gateway listening on http://localhost:15888"
+	@echo "Run 'make hummingbot-start' to open the Hummingbot CLI"
+
+hummingbot-start:
+	cd hummingbot && docker compose run --rm hummingbot
+
+hummingbot-down:
+	cd hummingbot && docker compose down
+
+hummingbot-logs:
+	cd hummingbot && docker compose logs -f
+
+hummingbot-update:
+	cd hummingbot && docker compose down
+	docker pull hummingbot/hummingbot:latest
+	docker pull hummingbot/gateway:latest
+	cd hummingbot && docker compose up -d
 

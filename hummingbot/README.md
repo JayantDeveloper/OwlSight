@@ -13,52 +13,102 @@ OwlSight performs:
 
 Only after those steps does the backend hand the route to the Hummingbot adapter.
 
-## Current Modes
+---
+
+## Local Setup
+
+### 1. Start Hummingbot + Gateway
+
+```bash
+make hummingbot-up
+```
+
+This starts two Docker containers:
+
+| Container    | Purpose                              | Port  |
+|-------------|--------------------------------------|-------|
+| `hummingbot` | CLI trading bot (CEX execution)      | —     |
+| `gateway`    | DEX middleware (REST API)            | 15888 |
+
+Gateway exposes the REST API the OwlSight backend connects to at `http://localhost:15888`.
+
+### 2. Configure the Hummingbot CLI (first time only)
+
+Attach to the running container:
+
+```bash
+make hummingbot-attach
+```
+
+- Set a password when prompted (this encrypts your API keys)
+- Connect an exchange for paper trading:
+
+```
+connect binance_paper_trade
+```
+
+- Verify Gateway is online — you should see **Gateway: ONLINE** in the top-right corner.
+
+Detach without stopping: `Ctrl+P` then `Ctrl+Q`
+
+### 3. Configure the OwlSight backend
+
+Copy `.env.example` to `.env` and confirm these values:
+
+```
+HUMMINGBOT_ENABLED=true
+HUMMINGBOT_API_URL=http://localhost:15888
+HUMMINGBOT_INSTANCE_NAME=paper-demo
+HUMMINGBOT_PAPER_TRADE=true
+EXECUTION_MODE=paper_hummingbot
+```
+
+---
+
+## Docker Compose Environment Variables
+
+| Variable                    | Default    | Description                          |
+|-----------------------------|------------|--------------------------------------|
+| `HUMMINGBOT_CONFIG_PASSWORD` | `owlsight` | Encrypts Hummingbot conf files       |
+| `GATEWAY_PASSPHRASE`         | `owlsight` | Encrypts Gateway wallet keys         |
+
+Set these in a `.env` file inside `hummingbot/` to override.
+
+---
+
+## Execution Modes
 
 ### `EXECUTION_MODE=mock`
 
 - Produces a `TradeExecutionRequest`.
 - Writes a request artifact into `hummingbot/requests/`.
-- Simulates a mock execution lifecycle so the frontend can show a reliable demo even with no Hummingbot service running.
+- Simulates a mock execution lifecycle — no Hummingbot needed.
 
 ### `EXECUTION_MODE=paper_hummingbot`
 
-- Produces the exact same request payload shape.
-- Attempts a paper-trade submission through the configured Hummingbot control surface.
-- Uses `HUMMINGBOT_API_URL`, `HUMMINGBOT_INSTANCE_NAME`, and `HUMMINGBOT_PAPER_TRADE` from `backend/.env`.
-- Falls back to mock execution if Hummingbot is unavailable or does not accept the submission flow.
+- Attempts a paper-trade submission to Gateway at `HUMMINGBOT_API_URL`.
+- Falls back to mock execution automatically if Gateway is unreachable.
 
-## Request Shape
+---
 
-The adapter emits a request containing:
+## Managing Hummingbot
 
-- opportunity id
-- asset symbol
-- source and destination chain
-- source and destination venue
-- bridge name and bridge pair
-- notional and asset amount
-- execution mode
-- guardrails for slippage, minimum net profit, and minimum confidence
+| Command                  | Action                              |
+|--------------------------|-------------------------------------|
+| `make hummingbot-up`     | Start Hummingbot + Gateway          |
+| `make hummingbot-down`   | Stop both containers                |
+| `make hummingbot-attach` | Open the Hummingbot CLI             |
+| `make hummingbot-logs`   | Stream container logs               |
+| `make hummingbot-update` | Pull latest images and restart      |
 
-See `sample_execution_request.json` for the expected structure.
+---
 
-## Local Setup
+## Request Artifacts
 
-1. Copy `backend/.env.example` to `backend/.env`.
-2. Paste your Birdeye API key into `backend/.env`.
-3. Leave `EXECUTION_MODE=paper_hummingbot` if you want the adapter to try Hummingbot first.
-4. Switch to `EXECUTION_MODE=mock` if you want a purely local demo with no Hummingbot dependency.
+Every execution (mock or live) writes a JSON artifact to `hummingbot/requests/`:
 
-## How to Swap the Mock for Real Hummingbot
+```
+hummingbot/requests/hbreq-<10-char-id>.json
+```
 
-Inside `backend/app/services/hummingbot_client.py`, replace or tighten the assumed endpoint candidates with the exact control API exposed by your Hummingbot deployment.
-
-Good next steps:
-
-1. Point `HUMMINGBOT_API_URL` at the actual paper-trade control service you want to use.
-2. Replace the candidate bot-start endpoints with the verified one from that deployment.
-3. Swap the generic paper-trade connector assumption with the exact connector or script you want Hummingbot to run.
-4. If needed, add authenticated requests inside `hummingbot_client.py` only.
-
-The important contract is already in place: `TradeExecutionRequest` is the handoff boundary, and the fallback path keeps the demo stable if Hummingbot is unavailable.
+See `sample_execution_request.json` for the payload structure.

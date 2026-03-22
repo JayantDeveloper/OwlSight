@@ -5,36 +5,32 @@ interface StatusPillProps {
   tone?: "neutral" | "positive" | "warning";
 }
 
-const toneClasses: Record<NonNullable<StatusPillProps["tone"]>, string> = {
-  neutral: "border-solviolet/25 bg-solviolet/[0.07] text-purple-300",
-  positive: "border-solmint/25 bg-solmint/[0.07] text-solmint",
-  warning: "border-amber-500/25 bg-amber-500/[0.07] text-amber-400",
+const toneDot: Record<NonNullable<StatusPillProps["tone"]>, string> = {
+  neutral: "#9945FF",
+  positive: "#14F195",
+  warning:  "#F59E0B",
 };
 
-const labelClasses: Record<NonNullable<StatusPillProps["tone"]>, string> = {
-  neutral: "text-solviolet/60",
-  positive: "text-solmint/60",
-  warning: "text-amber-400/60",
-};
-
-export function StatusPill({
-  label,
-  value,
-  detail,
-  tone = "neutral",
-}: StatusPillProps) {
+export function StatusPill({ label, value, detail, tone = "neutral" }: StatusPillProps) {
   return (
     <div
-      className={`min-w-0 rounded-xl border px-4 py-3 transition-all duration-200 ${toneClasses[tone]}`}
+      className="min-w-0 rounded-xl border px-4 py-3.5 transition-colors"
+      style={{ background: "var(--surface-2)", borderColor: "var(--border)" }}
     >
-      <p
-        className={`truncate text-[9px] uppercase tracking-[0.26em] ${labelClasses[tone]}`}
-      >
+      <p className="truncate text-[9px] uppercase tracking-[0.26em]" style={{ color: "var(--txt-4)" }}>
         {label}
       </p>
-      <p className="mt-1 truncate text-xs font-semibold">{value}</p>
+      <div className="mt-2 flex items-center gap-2">
+        <span
+          className="h-1.5 w-1.5 shrink-0 rounded-full"
+          style={{ backgroundColor: toneDot[tone] }}
+        />
+        <p className="truncate text-xs font-semibold" style={{ color: "var(--txt-1)" }}>
+          {value}
+        </p>
+      </div>
       {detail ? (
-        <p className={`mt-0.5 truncate text-[10px] ${labelClasses[tone]} opacity-80`}>
+        <p className="mt-1 truncate text-[10px]" style={{ color: "var(--txt-3)" }}>
           {detail}
         </p>
       ) : null}

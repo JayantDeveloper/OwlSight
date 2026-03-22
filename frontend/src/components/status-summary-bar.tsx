@@ -19,6 +19,12 @@ interface StatusSummaryBarProps {
   compact?: boolean;
 }
 
+const toneDot: Record<"neutral" | "positive" | "warning", string> = {
+  neutral: "#9945FF",
+  positive: "#14F195",
+  warning:  "#F59E0B",
+};
+
 export function StatusSummaryBar({
   marketProviderLabel,
   marketProviderDetail,
@@ -37,42 +43,50 @@ export function StatusSummaryBar({
   demoSessionTone,
   compact = false,
 }: StatusSummaryBarProps) {
+  const pills = [
+    { label: "Market",    value: marketProviderLabel,  detail: marketProviderDetail,  tone: marketProviderTone },
+    { label: "Engine",    value: executionEngineLabel, detail: executionEngineDetail, tone: executionEngineTone },
+    { label: "Hummingbot", value: hummingbotLabel,     detail: hummingbotDetail,      tone: hummingbotTone },
+    { label: "Safety",    value: fallbackLabel,         detail: fallbackDetail,         tone: fallbackTone },
+    { label: "Session",   value: demoSessionLabel,      detail: demoSessionDetail,      tone: demoSessionTone },
+  ] as const;
+
+  if (compact) {
+    return (
+      <div className="flex items-center gap-4 overflow-hidden">
+        {pills.map(({ label, value, tone }, i) => (
+          <div key={label} className="flex items-center gap-4">
+            {i > 0 && (
+              <span
+                className="h-3 w-px shrink-0"
+                style={{ background: "var(--border)" }}
+              />
+            )}
+            <div className="flex items-center gap-1.5">
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ backgroundColor: toneDot[tone] }}
+              />
+              <span className="text-[10px] font-medium" style={{ color: "var(--txt-4)" }}>
+                {label}
+              </span>
+              <span className="text-[10px] font-semibold" style={{ color: "var(--txt-2)" }}>
+                {value}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={`grid gap-3 ${
-        compact ? "md:grid-cols-2 xl:grid-cols-5" : "md:grid-cols-2 xl:grid-cols-5"
-      }`}
-    >
-      <StatusPill
-        label="Market Signals"
-        value={marketProviderLabel}
-        tone={marketProviderTone}
-        detail={marketProviderDetail}
-      />
-      <StatusPill
-        label="Trade Engine"
-        value={executionEngineLabel}
-        tone={executionEngineTone}
-        detail={executionEngineDetail}
-      />
-      <StatusPill
-        label="Hummingbot"
-        value={hummingbotLabel}
-        tone={hummingbotTone}
-        detail={hummingbotDetail}
-      />
-      <StatusPill
-        label="Safety Net"
-        value={fallbackLabel}
-        tone={fallbackTone}
-        detail={fallbackDetail}
-      />
-      <StatusPill
-        label={compact ? "Session" : "Product Mode"}
-        value={demoSessionLabel}
-        tone={demoSessionTone}
-        detail={demoSessionDetail}
-      />
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+      <StatusPill label="Market Signals"  value={marketProviderLabel}  detail={marketProviderDetail}  tone={marketProviderTone} />
+      <StatusPill label="Trade Engine"    value={executionEngineLabel} detail={executionEngineDetail} tone={executionEngineTone} />
+      <StatusPill label="Hummingbot"      value={hummingbotLabel}      detail={hummingbotDetail}      tone={hummingbotTone} />
+      <StatusPill label="Safety Net"      value={fallbackLabel}         detail={fallbackDetail}         tone={fallbackTone} />
+      <StatusPill label="Product Mode"    value={demoSessionLabel}      detail={demoSessionDetail}      tone={demoSessionTone} />
     </div>
   );
 }

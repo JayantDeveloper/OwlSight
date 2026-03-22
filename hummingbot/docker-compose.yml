@@ -1,0 +1,37 @@
+services:
+  hummingbot:
+    image: hummingbot/hummingbot:latest
+    container_name: hummingbot
+    restart: "no"
+    volumes:
+      - ./hummingbot_files/conf:/home/hummingbot/conf
+      - ./hummingbot_files/conf/connectors:/home/hummingbot/conf/connectors
+      - ./hummingbot_files/conf/strategies:/home/hummingbot/conf/strategies
+      - ./hummingbot_files/logs:/home/hummingbot/logs
+      - ./hummingbot_files/data:/home/hummingbot/data
+      - ./hummingbot_files/scripts:/home/hummingbot/scripts
+      - ./certs:/home/hummingbot/certs
+    stdin_open: true
+    tty: true
+    networks:
+      - owlsight
+
+  gateway:
+    image: hummingbot/gateway:latest
+    container_name: gateway
+    restart: unless-stopped
+    ports:
+      - "15888:15888"
+    volumes:
+      - ./gateway_files/conf:/home/gateway/conf
+      - ./gateway_files/logs:/home/gateway/logs
+      - ./certs:/home/gateway/certs
+    environment:
+      - GATEWAY_PASSPHRASE=${GATEWAY_PASSPHRASE:-owlsight}
+      - DEV=true
+    networks:
+      - owlsight
+
+networks:
+  owlsight:
+    driver: bridge
